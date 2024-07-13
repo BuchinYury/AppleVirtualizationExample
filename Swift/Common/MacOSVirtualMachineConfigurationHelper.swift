@@ -55,7 +55,7 @@ struct MacOSVirtualMachineConfigurationHelper {
 
     static func createNetworkDeviceConfiguration() -> VZVirtioNetworkDeviceConfiguration {
         let networkDevice = VZVirtioNetworkDeviceConfiguration()
-        networkDevice.macAddress = VZMACAddress(string: "d6:a7:58:8e:78:d4")!
+        networkDevice.macAddress = VZMACAddress.randomLocallyAdministered()
 
         let networkAttachment = VZNATNetworkDeviceAttachment()
         networkDevice.attachment = networkAttachment
@@ -73,6 +73,43 @@ struct MacOSVirtualMachineConfigurationHelper {
         } else {
             return VZUSBKeyboardConfiguration()
         }
+    }
+    
+    static func createConsoleDevicesConfiguration() -> VZConsoleDeviceConfiguration {
+        let configuration = VZVirtioConsoleDeviceConfiguration()
+        return configuration
+    }
+    
+    static func createSerialPortConfiguration() -> VZSerialPortConfiguration {
+        let configuration = VZVirtioConsoleDeviceSerialPortConfiguration()
+        configuration.attachment = VZFileHandleSerialPortAttachment(
+            fileHandleForReading: nil,
+            fileHandleForWriting: nil
+        )
+        return configuration
+    }
+    
+    static func createSocketDeviceConfiguration() -> VZSocketDeviceConfiguration {
+        let configuration = VZVirtioSocketDeviceConfiguration()
+        return configuration
+    }
+    
+    // TO-DO
+    static func createClipboardConsoleDeviceConfiguration() -> VZConsoleDeviceConfiguration {
+        let spiceClipboardAgent = VZSpiceAgentPortAttachment()
+        spiceClipboardAgent.sharesClipboard = true
+        let consolePort = VZVirtioConsolePortConfiguration()
+        consolePort.name = VZSpiceAgentPortAttachment.spiceAgentPortName
+//        print(">>> VZSpiceAgentPortAttachment.spiceAgentPortName =", VZSpiceAgentPortAttachment.spiceAgentPortName)
+        consolePort.attachment = spiceClipboardAgent
+        consolePort.isConsole = false
+        
+        let configuration = VZVirtioConsoleDeviceConfiguration()
+//        print(">>> configuration.ports.maximumPortCount =", configuration.ports.maximumPortCount)
+//        print(">>> configuration.ports[0] =", configuration.ports[0] == nil)
+        configuration.ports[0] = consolePort
+//        print(">>> configuration.ports[0] =", configuration.ports[0] == nil)
+        return configuration
     }
 }
 
