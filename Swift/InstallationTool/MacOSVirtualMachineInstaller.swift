@@ -154,7 +154,7 @@ class MacOSVirtualMachineInstaller: NSObject {
         }
 
         // 128 GB disk space.
-        var result = ftruncate(diskFd, 128 * 1024 * 1024 * 1024)
+        var result = ftruncate(diskFd, 32 * 1024 * 1024 * 1024)
         if result != 0 {
             fatalError("ftruncate() failed.")
         }
