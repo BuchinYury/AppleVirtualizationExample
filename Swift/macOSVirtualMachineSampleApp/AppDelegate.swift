@@ -76,6 +76,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         virtualMachineConfiguration.networkDevices = [MacOSVirtualMachineConfigurationHelper.createNetworkDeviceConfiguration()]
         virtualMachineConfiguration.pointingDevices = [MacOSVirtualMachineConfigurationHelper.createPointingDeviceConfiguration()]
         virtualMachineConfiguration.keyboards = [MacOSVirtualMachineConfigurationHelper.createKeyboardConfiguration()]
+        virtualMachineConfiguration.consoleDevices = [MacOSVirtualMachineConfigurationHelper.createClipboardConsoleDeviceConfiguration()]
+        
+//        virtualMachineConfiguration.consoleDevices = [MacOSVirtualMachineConfigurationHelper.createConsoleDevicesConfiguration()]
+//        virtualMachineConfiguration.serialPorts = [MacOSVirtualMachineConfigurationHelper.createSerialPortConfiguration()]
+        virtualMachineConfiguration.socketDevices = [MacOSVirtualMachineConfigurationHelper.createSocketDeviceConfiguration()]
 
         try! virtualMachineConfiguration.validate()
 
@@ -89,11 +94,43 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Start or restore the virtual machine.
 
     func startVirtualMachine() {
-        virtualMachine.start(completionHandler: { (result) in
+        virtualMachine.start(completionHandler: { [weak self] (result) in
             if case let .failure(error) = result {
                 fatalError("Virtual machine failed to start with \(error)")
             }
+            
+            guard let self,
+                  let virtualMachine = self.virtualMachine,
+                  let socketDevice = virtualMachine.socketDevices.first as? VZVirtioSocketDevice
+            else { return }
+            
+            DispatchQueue.main.async {
+                _ = socketDevice.listen(port: 8080, with: self)
+            }
+            
+            print(">>> socketDevice is", socketDevice)
+            self.connect(socketDevice: socketDevice, port: 8080)
         })
+    }
+    
+    func connect(
+        socketDevice: VZVirtioSocketDevice,
+        port: UInt32
+    ) {
+        socketDevice.connect(toPort: port) { result in
+            print(">>> VZVirtioSocketDevice.connect(toPort: port) result =", result)
+            
+            switch result {
+            case let .success(connection):
+                print(">>> connection", connection)
+            case let .failure(error):
+                print(">>> error", error)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.connect(socketDevice: socketDevice, port: port)
+                }
+            }
+        }
     }
 
     func resumeVirtualMachine() {
@@ -192,5 +229,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 #endif
 
         return .terminateNow
+    }
+}
+
+extension AppDelegate: VZVirtioSocketListenerDelegate {
+    
+    func listener(
+        _ listener: VZVirtioSocketListener,
+        shouldAcceptNewConnection connection: VZVirtioSocketConnection,
+        from socketDevice: VZVirtioSocketDevice
+    ) -> Bool {
+        print(">>> VZVirtioSocketListenerDelegate.listener connection =", connection)
+        return true
     }
 }
